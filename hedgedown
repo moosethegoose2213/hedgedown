@@ -1,0 +1,359 @@
+#!/bin/bash
+[[ "$@" =~ "-refreshcatalogs" ]] && rm /tmp/*.sucatalog 2>/dev/null
+############################
+# Arguments
+# -get-link, -get-latest, -get-vers, -download-latest, -beta, -monterey, -bigsur, -silent, -cachecatalogs, -cachedcatalogs
+############################
+
+############################
+# Download Modern OSes
+############################
+download_modern () {
+[ ! -f /tmp/$OS$beta.sucatalog ] && curl "$sucatalog" -o /tmp/$OS$beta.sucatalog 2>/dev/null
+instlist=$( echo $(cat /tmp/$OS$beta.sucatalog | grep "http://swcdn.apple.com/content/downloads/.*/InstallAssistant.pkg<" | sed 's/InstallAssistant.pkg/BuildManifest.plist/g;s/<string>//g;s/<\/string>//g') | xargs curl -s | grep -A1 "ProductVersion" | sed 's/--//g;s/<key>ProductVersion<\/key>//g;s/<string>//g;s/<\/string>//g' | grep . | cut -c 2- | grep .)
+osdel=$( printf "$instlist" | grep -v -n "$OSVER" | cut -f1 -d ':' | tr '\n' 'd;' | sed 's/.$//g;s/$/d/;s/d/d\;/g')
+instlist=$( printf "$instlist" | grep  "^$OSVER." )
+installer=$(cat /tmp/$OS$beta.sucatalog | grep "http://swcdn.apple.com/content/downloads/.*/InstallAssistant.pkg<" 2>/dev/null | sed "s/<string>//g;s/<\/string>//g;s/.*http/http/g;$osdel")
+clear
+printf "###############################\n# Please Select an Installer: #\n###############################\nTo save InstallAssistant, rerun with '-saveinstallassistant' flag\n\n"
+printf "Installers:$(echo "$instlist" | nl -w2 -s') ' |  tr '\n' ' ' | sed 's/.$//')\n"
+select opt in ${installer[@]} "Go Back"; do
+  case $opt in
+  	*InstallAssistant.pkg*)
+		version=$(curl $(echo "$opt" | sed 's/InstallAssistant\.pkg/BuildManifest\.plist/') 2>/dev/null | grep -A1 ProductVersion | sed 's/.*P.*//g;s/<string>//g;s/<\/string>//g' | grep . | sed 's/  //g' | cut -c 2-)
+		build=$(curl $(echo "$opt" | sed 's/InstallAssistant\.pkg/BuildManifest\.plist/') 2>/dev/null | grep -A1 BuildNumber | sort | uniq | grep "string" | sed 's/<string>//g;s/<\/string>//g' | cut -c 5-)
+		echo "Download macOS $version ($build) Installer? y/n"
+		read yn
+		if [[ $yn =~ y ]]; then
+			clear
+			echo "Downloading InstallAssistant ($version $build).pkg..."
+			mkdir ~/Downloads/macOSDownload
+			cd ~/Downloads/macOSDownload
+			curl $opt -o "InstallAssistant ($version $build).pkg"
+			#if [[ ! "$@" =~ '-saveinstallassistant' ]]; then
+				#OSAPP=$( ls -1 ./Extracted/Payload/Applications )
+				#pkgutil --expand-full ~/Downloads/"InstallAssistant ($version $build).pkg" ./Extracted
+				#mkdir ./Extracted/SharedSupport.dmg "./Extracted/Payload/Applications/$OSAPP/Contents/SharedSupport/"
+				#mv ./Extracted/SharedSupport.dmg "./Extracted/Payload/Applications/$OSAPP/Contents/SharedSupport/"
+				#mv ./Extracted/Payload/Applications/* /Applications/
+				#[[ -d /Applications/"$OSAPP"/ ]] && rm -rf ~/Downloads/macOSDownload
+				#else
+				echo "InstallAssistant ($version $build).pkg located in ~/Downloads/macOSDownload"
+				#fi
+			afplay /System/Library/Sounds/Blow.aiff
+			echo "Done!"
+		else
+			/bin/bash "$0"
+			break
+		fi
+	;;
+	"Go Back")
+		"$0"
+		break
+	;;
+    *)
+      echo "This is not an option, please try again"
+	;;
+  esac
+done
+}
+
+
+############################
+# Download Vintage OSes
+############################
+download_vintage () {
+[ ! -f /tmp/$OS$beta.sucatalog ] && curl "$sucatalog" -o /tmp/$OS$beta.sucatalog 2>/dev/null
+#Terrifying, but it works. I'll clean it up in the future
+instlist=$( curl $( cat /tmp/$OS.sucatalog | grep "http://swcdn.apple.com/content/downloads/.*/InstallESDDmg.pkg<" | sed 's/InstallESDDmg\.pkg/InstallInfo\.plist/g;s/<string>//g;s/<\/string>//g;s/.*http/http/g') 2>/dev/null | grep -B2 "System Image Info" |  sed 's/--//g;s/<string>//g;s/<\/string>//g;s/.*vers.*//g' | grep . | cut -f-3 -d "." | cut -c 3- | grep -v "System Image\|dict" |  grep -n "")
+installer=$(cat /tmp/$OS.sucatalog | grep "http://swcdn.apple.com/content/downloads/.*/InstallESDDmg.pkg<" | sed "s/<string>//g;s/<\/string>//g$blacklist" | tr ' ' '\n' | grep . | grep -n "")
+osdel=$( printf "$instlist" | grep -v -n "$OSVER" | cut -f1 -d ':' | tr '\n' 'd;' | sed 's/.$//g;s/$/d/;s/d/d\;/g')
+instlist=$( printf "$instlist" | grep  ":$OSVER" )
+installer=$( printf "$installer" | tr ' ' '\n' | grep "^$( printf "$instlist" | tr ' ' '\n' | cut -f1 -d ':' | sed 's/$/:/g')" | cut -f3 -d ':' | sed 's/^/http\:/g')
+instlist=$( printf "$instlist" | cut -f2 -d':')
+clear
+printf "###############################\n# Please Select an Installer: #\n###############################\n\n"
+printf "Installers:$(echo "$instlist" | nl -w2 -s') ' |  tr '\n' ' ' | sed 's/.$//')\n"
+select opt in ${installer[@]} "Go Back"; do
+  case $opt in
+  	*InstallESDDmg.pkg*)
+		echo $opt
+		version=$(curl $(echo "$opt" | sed 's/InstallESDDmg\.pkg/InstallInfo\.plist/') 2>/dev/null | grep -A1 "version" | uniq | tail -2 | sed 's/--//g;s/<string>//g;s/<\/string>//g;s/.*vers.*//g' | grep . | cut -f-3 -d "." | cut -c 3-)
+		echo "Download macOS $version Installer? y/n"
+		read yn
+		if [[ $yn =~ y ]]; then
+			opt=$( echo $opt | sed 's/InstallESDDmg\.pkg//' )
+			clear
+			echo "Downloading Prerequisites for macOS $version..."
+			mkdir ~/Downloads/macOSDownload
+			cd ~/Downloads/macOSDownload
+			echo "Downloading AppleDiagnostics.chunklist... (1/7)"
+			curl $opt/AppleDiagnostics.chunklist -OJ
+			echo "Downloading AppleDiagnostics.dmg... (2/7)"
+			curl $opt/AppleDiagnostics.dmg -OJ
+			echo "Downloading BaseSystem.chunklist... (3/7)"
+			curl $opt/BaseSystem.chunklist -OJ
+			echo "Downloading BaseSystem.dmg... (4/7)"
+			curl $opt/BaseSystem.dmg -OJ
+			echo "Downloading InstallESDDmg.pkg, this will take a while... (5/7)"
+			curl $opt/InstallESDDmg.pkg -OJ
+			echo "Downloading InstallAssistantAuto.pkg... (6/7)"
+			curl $opt/InstallAssistantAuto.pkg -OJ
+			echo "Downloading InstallInfo.plist... (7/7)"
+			curl $opt/InstallInfo.plist -OJ
+			echo "Building the Installer, this may take a while..."
+			pkgutil --expand-full InstallAssistantAuto.pkg ./Installer
+			pkgutil --expand-full InstallESDDmg.pkg ./InstallESD
+			cp ./InstallESD/InstallESD.dmg ./Installer/Payload/Install\ macOS\ *.app/Contents/SharedSupport/
+			cp ./AppleDiagnostics.chunklist ./Installer/Payload/Install\ macOS\ *.app/Contents/SharedSupport/
+			cp ./AppleDiagnostics.dmg ./Installer/Payload/Install\ macOS\ *.app/Contents/SharedSupport/
+			cp ./BaseSystem.dmg ./Installer/Payload/Install\ macOS\ *.app/Contents/SharedSupport/
+			cp ./BaseSystem.chunklist ./Installer/Payload/Install\ macOS\ *.app/Contents/SharedSupport/
+			cp ./InstallInfo.plist ./Installer/Payload/Install\ macOS\ *.app/Contents/SharedSupport/
+			mv ./Installer/Payload/Install\ macOS\ *.app /Applications
+			echo "Removing unnecessary files..."
+			[[ -d /Applications/Install\ *.app/ ]] && rm -rf ~/Downloads/macOSDownload
+			afplay /System/Library/Sounds/Blow.aiff
+			echo "Done! Installer located in /Applications"
+			exit
+		else
+			"$0"
+			break
+		fi
+	;;
+	"Go Back")
+		"$0"
+		break
+	;;
+    *)
+      echo "This is not an option, please try again"
+	;;
+  esac
+done
+}
+
+
+############################
+# Download Obsolete OSes
+############################
+download_obsolete () {
+	echo "Are you sure you'd like to download $OS? y/n"
+	read yn
+	[[ $yn =~ y ]] || exit
+	clear
+	printf "###################\n# Downloading OS: #\n###################\n\n"
+	echo "Downloading $OS, this may take a while..."
+	[ -d ~/Downloads/macOSDownload ] && rm -r ~/Downloads/macOSDownload
+	mkdir ~/Downloads/macOSDownload
+	cd ~/Downloads/macOSDownload
+	curl "$instalink" -OJ
+	printf "Building Installer, this may take a while...\n"
+	hdiutil attach Install*OS*.dmg -nobrowse >>/dev/null
+	pkgutil --expand-full /Volumes/Install\ *"$PREFIX"/Install*OS*.pkg ./Extracted
+	mv ./Extracted/Install*OS*.pkg/InstallESD.dmg ./Extracted/Install*OS*.pkg/Payload/Install\ "$OS".app/Contents/SharedSupport/
+	[ -d /Applications/Install\ "$OS".app ] && rm -rf /Applications/Install\ "$OS".app
+	mv ./Extracted/Install*OS*.pkg/Payload/Applications/*.app /Applications/
+	[ -d /Applications/Install\ "$OS".app ] && rm -r ~/Downloads/macOSDownload
+	hdiutil detach /Volumes/Install\ *"$PREFIX" >>/dev/null
+	afplay /System/Library/Sounds/Blow.aiff
+	echo "Done!"
+}
+
+############################
+# Download Archive OSes
+############################
+download_archive () {
+	echo "Are you sure you'd like to download $OS? y/n"
+	read yn
+	[[ $yn =~ y ]] || exit
+	clear
+	printf "###################\n# Downloading OS: #\n###################\n\n"
+	echo "Downloading $OS, this may take a while..."
+	[ -d ~/Downloads/macOSDownload"$OS" ] && rm -r ~/Downloads/macOSDownload"$OS"
+	mkdir ~/Downloads/macOSDownload"$OS"
+	cd ~/Downloads/macOSDownload"$OS"
+	[[ "$@" =~ '-aria2' ]] && aria2c $torrentlink
+	[[ ! "$@" =~ '-aria2' ]] && curl -LO "$instalink" 
+	[[ "$OS" == 'Mac OS X Snow Leopard' ]] && { echo "Downloading BootCamp Support ISO..."; curl -LO $bootlink ; }
+	[[ "$OS" == 'OS X Mavericks' ]] || { afplay /System/Library/Sounds/Blow.aiff; echo "Done!"; }
+}
+
+############################
+# Get Latest Link/Download
+############################
+get_latest () {
+	if [[ ! "$@" =~ '-silent' ]]; then
+		echo "Specified flags: $@"
+		echo "Loading..."
+	fi
+	[[ "$@" =~ '-cachecatalogs' ]] && { downloadarg='-o'; location='/tmp/cached.sucatalog'; [[ -f /tmp/cached.sucatalog ]] && rm /tmp/cached.sucatalog; }
+	if [[ ! "$@" =~ '-cachedcatalogs' ]]; then
+		[[ "$@" =~ '-bigsur' ]] && { sucatalog=$( curl "https://swscan.apple.com/content/catalogs/others/index-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog" $downloadarg $location 2>/dev/null); OS=11; }
+		[[ "$@" =~ '-bigsur' ]] && [[ "$@" =~ '-beta' ]] && sucatalog=$( curl "https://swscan.apple.com/content/catalogs/others/index-10.16seed-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog" $downloadarg $location 2>/dev/null)
+		[[ "$@" =~ '-monterey' ]] && { sucatalog=$( curl https://swscan.apple.com/content/catalogs/others/index-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog $downloadarg $location 2>/dev/null); OS=12; }
+		[[ "$@" =~ '-monterey' ]] && [[ "$@" =~ '-beta' ]] && sucatalog=$( curl https://swscan.apple.com/content/catalogs/others/index-12seed-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog $downloadarg $location 2>/dev/null)
+	else
+		[[ "$@" =~ '-bigsur' ]] && OS=11
+		[[ "$@" =~ '-monterey' ]] && OS=12
+	fi
+	#The next line is hacky garbage, I'm writing some of this at 5am
+	[[ "$@" =~ '-cache' ]] && sucatalog=$( cat "/tmp/cached.sucatalog")
+	instlist=$( echo $(echo "$sucatalog" | grep "http://swcdn.apple.com/content/downloads/.*/InstallAssistant.pkg<" | sed 's/InstallAssistant.pkg/BuildManifest.plist/g;s/<string>//g;s/<\/string>//g') | xargs curl -s | grep -A1 "ProductVersion" | sed 's/--//g;s/<key>ProductVersion<\/key>//g;s/<string>//g;s/<\/string>//g' | grep . | cut -c 2- | grep .)
+	osdel=$( printf "$instlist" | grep -v -n "$OS" | cut -f1 -d ':' | tr '\n' 'd;' | sed 's/.$//g;s/$/d/;s/d/d\;/g')
+	instlist=$( printf "$instlist" | grep  ":$OS" )
+	installer=$(printf "$sucatalog" | grep "http://swcdn.apple.com/content/downloads/.*/InstallAssistant.pkg<" 2>/dev/null | sed "s/<string>//g;s/<\/string>//g;s/.*http/http/g;$osdel" | tail -n 1)
+	version=$(curl $(echo "$installer" | sed 's/InstallAssistant\.pkg/BuildManifest\.plist/') 2>/dev/null | grep -A1 ProductVersion | sed 's/.*P.*//g;s/<string>//g;s/<\/string>//g' | grep . | sed 's/  //g' | cut -c 2-)
+	build=$(curl $(echo "$installer" | sed 's/InstallAssistant\.pkg/BuildManifest\.plist/') 2>/dev/null | grep -A1 BuildNumber | sort | uniq | grep "string" | sed 's/<string>//g;s/<\/string>//g' | cut -c 5-)
+	[[ "$@" =~ '-get-latest' ]] && printf "$installer ($version $build)\n"
+	[[ "$@" =~ '-get-link' ]] && printf "$installer\n"
+	[[ "$@" =~ '-get-vers' ]] && printf "macOS $version ($build)\n"
+	[[ "$@" =~ '-download-latest' ]] && { echo "Downloading macOS $version ($build)..."; curl "$installer" -o ~/Downloads/InstallAssistant\ \($version\ $build\).pkg2>&1 -#  | perl -015 -n -e 'print "$1\n" if (/[#]* ([\d]+)/);'; afplay /System/Library/Sounds/Blow.aiff; }
+	exit 0
+}
+
+
+
+############################
+# Select OS/CLI
+############################
+[[ "$@" =~ '-get-'* ]] && get_latest "$@"
+[[ "$@" =~ '-download-' ]] && get_latest "$@"
+[[ "$@" =~ '-archive' ]] && { archive=("Mac OS X Snow Leopard" "Mac OS X Leopard (Intel)" "Mac OS X Tiger (Intel)"); mavericks=("OS X Mavericks"); }
+clear
+COLUMNS=12
+printf "################################\n#       macOS Downloader       #\n################################\n"
+echo "To refresh catalogs, please rerun with '-refreshcatalogs' flag"
+echo "To load beta catalogs, please rerun with '-beta' flag"
+printf "To show Archive.org-exclusive installers, rerun with '-archive' flag. To download Archive installers with aria2c, use '-aria2' flag\n\n"
+printf "CLI examples (Big Sur+): \nGet Latest InstallAssistant Link: macOS Downloader.sh -get-latest -bigsur -beta\nDownload Latest InstallAssistant: macOS Downloader.sh -download-latest -bigsur -beta\n\n"
+printf "Please Select an OS Category: \n"
+select opt in "macOS Monterey" "macOS Big Sur" "macOS Catalina" "macOS Mojave" "macOS High Sierra" "macOS Sierra" "OS X El Capitan" "OS X Yosemite" "${mavericks[@]}" "OS X Mountain Lion" "Mac OS X Lion" "${archive[@]}"; do
+  case $opt in
+    "macOS Monterey")
+		sucatalog='https://swscan.apple.com/content/catalogs/others/index-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'
+		[[ "$@" =~ '-beta' ]] && { sucatalog='https://swscan.apple.com/content/catalogs/others/index-12seed-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'; beta='beta'; }
+		OS='monterey'
+		OSVER='12'
+		download_modern
+		break
+	;;
+  	"macOS Big Sur")
+		sucatalog='https://swscan.apple.com/content/catalogs/others/index-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'
+		[[ "$@" =~ '-beta' ]] && { sucatalog='https://swscan.apple.com/content/catalogs/others/index-10.16seed-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'; beta='beta'; }
+		OS='bigsur'
+		OSVER='11'
+		download_modern
+		break
+	;;
+	"macOS Catalina")
+		sucatalog='https://swscan.apple.com/content/catalogs/others/index-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'
+		[[ "$@" =~ '-beta' ]] && { sucatalog='https://swscan.apple.com/content/catalogs/others/index-10.15seed-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'; beta='beta'; }
+		OS='catalina'
+		OSVER='10.15'
+		download_vintage
+		break
+	;;
+	"macOS Mojave")
+		sucatalog='https://swscan.apple.com/content/catalogs/others/index-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'
+		[[ "$@" =~ '-beta' ]] && { sucatalog='https://swscan.apple.com/content/catalogs/others/index-10.14seed-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'; beta='beta'; }
+		OS='mojave'
+		OSVER='10.14'
+		blacklist=';s/.*r1dbqtmf3mtpikjnd04cq31p4jk91dceh8.*//g'
+		download_vintage
+		break
+	;;
+	"macOS High Sierra")
+		sucatalog='https://swscan.apple.com/content/catalogs/others/index-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'
+		[[ "$@" =~ '-beta' ]] && { sucatalog='https://swscan.apple.com/content/catalogs/others/index-10.13seed-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'; beta='beta'; }
+		OS='highsierra'
+		OSVER='10.13'
+		blacklist=';s/.*r8sifyyfzrjj4cyekitx7sqfa5epsfay0h.*//g'
+		download_vintage
+		break
+	;;
+	"macOS Sierra")
+		clear
+		PREFIX='macOS'
+		OS='macOS Sierra'
+		instalink='http://updates-http.cdn-apple.com/2019/cert/061-39476-20191023-48f365f4-0015-4c41-9f44-39d3d2aca067/InstallOS.dmg'
+		download_obsolete
+		defaults write /Applications/Install\ macOS\ Sierra.app/Contents/Info.plist CFBundleShortVersionString "$(  strings "/Applications/Install macOS Sierra.app/Contents/Resources/createinstallmedia" | grep 12 2>/dev/null)"
+		break
+	;;
+	"OS X El Capitan")
+		clear
+		PREFIX='OS X'
+		OS='OS X El Capitan'
+		instalink='http://updates-http.cdn-apple.com/2019/cert/061-41424-20191024-218af9ec-cf50-4516-9011-228c78eda3d2/InstallMacOSX.dmg'
+		download_obsolete
+		break
+	;;
+	"OS X Yosemite")
+		clear
+		PREFIX='OS X'
+		OS='OS X Yosemite'
+		instalink='http://updates-http.cdn-apple.com/2019/cert/061-41343-20191023-02465f92-3ab5-4c92-bfe2-b725447a070d/InstallMacOSX.dmg'
+		download_obsolete
+		break
+	;;
+	"OS X Mavericks")
+		clear
+		PREFIX='OS X'
+		OS='OS X Mavericks'
+		instalink='https://archive.org/download/install-os-x-mavericks.app/Install%20OS%20X%20Mavericks.app.zip'
+		torrentlink='https://archive.org/download/install-os-x-mavericks.app/install-os-x-mavericks.app_archive.torrent'
+		download_archive "$@"
+		mv ~/Downloads/macOSDownload"$OS"/*.app /Applications
+		afplay /System/Library/Sounds/Blow.aiff
+		echo "Done!"
+		break
+	;;
+	"OS X Mountain Lion")
+		clear
+		PREFIX='OS X'
+		OS='OS X Mountain Lion'
+		instalink='https://updates.cdn-apple.com/2021/macos/031-0627-20210614-90D11F33-1A65-42DD-BBEA-E1D9F43A6B3F/InstallMacOSX.dmg'
+		download_obsolete
+		break
+	;;
+	"Mac OS X Lion")
+		clear
+		PREFIX='Mac OS X'
+		OS='Mac OS X Lion'
+		instalink='https://updates.cdn-apple.com/2021/macos/041-7683-20210614-E610947E-C7CE-46EB-8860-D26D71F0D3EA/InstallMacOSX.dmg'
+		download_obsolete
+		break
+	;;
+	"Mac OS X Snow Leopard")
+		clear
+		PREFIX='Mac OS X'
+		OS='Mac OS X Snow Leopard'
+		instalink='https://archive.org/download/MacOSXSnowLeopard/snowleopardinstall.dmg'
+		bootlink='https://archive.org/download/MacOSXSnowLeopard/Boot%20Camp.iso'
+		torrentlink='https://archive.org/download/MacOSXSnowLeopard/MacOSXSnowLeopard_archive.torrent'
+		download_ancient "$@"
+		break
+	;;
+	"Mac OS X Leopard (Intel)")
+		clear
+		PREFIX='Mac OS X'
+		OS='Mac OS X Leopard'
+		instalink='https://archive.org/download/mac-os-x-10.5.6-install-dvd-sl/Mac%20OS%20X%2010.5.6%20Install%20DVD%20SL.iso'
+		torrentlink='https://archive.org/download/mac-os-x-10.5.6-install-dvd-sl/mac-os-x-10.5.6-install-dvd-sl_archive.torrent'
+		download_archive "$@"
+		break
+	;;
+	"Mac OS X Tiger (Intel)")
+		clear
+		PREFIX='Mac OS X'
+		OS='Mac OS X Tiger'
+		instalink='https://archive.org/download/10.4.10-8-r-4088-acdt/10.4.10-8R4088-ACDT.dmg'
+		torrentlink='https://archive.org/download/10.4.10-8-r-4088-acdt/10.4.10-8-r-4088-acdt_archive.torrent'
+		download_archive "$@"
+		break
+	;;
+	*)
+	  echo "This is not an option, please try again"
+	;;
+  esac
+done
