@@ -1,5 +1,5 @@
 # hedgedown
-A basic macOS Downloading utility written in bash
+A basic macOS downloading utility written in bash
 
 To refresh catalogs, run with the `-refreshcatalogs` flag.
 
