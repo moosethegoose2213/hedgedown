@@ -79,7 +79,8 @@ select opt in ${installer[@]} "Go Back"; do
   	*InstallESDDmg.pkg*)
 		echo $opt
 		version=$(curl $(echo "$opt" | sed 's/InstallESDDmg\.pkg/InstallInfo\.plist/') 2>/dev/null | grep -A1 "version" | uniq | tail -2 | sed 's/--//g;s/<string>//g;s/<\/string>//g;s/.*vers.*//g' | grep . | cut -f-3 -d "." | cut -c 3-)
-		echo "Download macOS $version Installer? y/n"
+        build=$(cat /tmp/$OS$beta.sucatalog | grep $( echo "$opt" | cut -f9 -d '/') | grep English | sed 's/<string>//g;s/<\/string>//g' | xargs curl 2>/dev/null | grep -A1 'BUILD' | sed 's/<key.*>//g;s/<string>//g;s/<\/string>//g;s/ //g' | grep .)
+		echo "Download macOS $version ($build) Installer? y/n"
 		read yn
 		if [[ $yn =~ y ]]; then
 			opt=$( echo $opt | sed 's/InstallESDDmg\.pkg//' )
