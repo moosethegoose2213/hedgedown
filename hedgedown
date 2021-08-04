@@ -10,10 +10,10 @@
 ############################
 download_modern () {
 [ ! -f /tmp/$OS$beta.sucatalog ] && curl "$sucatalog" -o /tmp/$OS$beta.sucatalog 2>/dev/null
-instlist=$( echo $(cat /tmp/$OS$beta.sucatalog | grep "http://swcdn.apple.com/content/downloads/.*/InstallAssistant.pkg<" | sed 's/InstallAssistant.pkg/BuildManifest.plist/g;s/<string>//g;s/<\/string>//g') | xargs curl -s | grep -A1 "ProductVersion" | sed 's/--//g;s/<key>ProductVersion<\/key>//g;s/<string>//g;s/<\/string>//g' | grep . | cut -c 2- | grep .)
+instlist=$( echo $(cat /tmp/$OS$beta.sucatalog | grep "http.*://swcdn.apple.com/content/downloads/.*/InstallAssistant.pkg<" | sed 's/InstallAssistant.pkg/BuildManifest.plist/g;s/<string>//g;s/<\/string>//g') | xargs curl -s | grep -A1 "ProductVersion" | sed 's/--//g;s/<key>ProductVersion<\/key>//g;s/<string>//g;s/<\/string>//g' | grep . | cut -c 2- | grep .)
 osdel=$( printf "$instlist" | grep -v -n "$OSVER" | cut -f1 -d ':' | tr '\n' 'd;' | sed 's/.$//g;s/$/d/;s/d/d\;/g')
 instlist=$( printf "$instlist" | grep  "^$OSVER." )
-installer=$(cat /tmp/$OS$beta.sucatalog | grep "http://swcdn.apple.com/content/downloads/.*/InstallAssistant.pkg<" 2>/dev/null | sed "s/<string>//g;s/<\/string>//g;s/.*http/http/g;$osdel")
+installer=$(cat /tmp/$OS$beta.sucatalog | grep "http.*://swcdn.apple.com/content/downloads/.*/InstallAssistant.pkg<" 2>/dev/null | sed "s/<string>//g;s/<\/string>//g;s/.*http/http/g;$osdel")
 clear
 printf "###############################\n# Please Select an Installer: #\n###############################\nTo save InstallAssistant, rerun with '-saveinstallassistant' flag\n\n"
 printf "Installers:$(echo "$instlist" | nl -w2 -s') ' |  tr '\n' ' ' | sed 's/.$//')\n"
@@ -65,8 +65,8 @@ done
 download_vintage () {
 [ ! -f /tmp/$OS$beta.sucatalog ] && curl "$sucatalog" -o /tmp/$OS$beta.sucatalog 2>/dev/null
 #Terrifying, but it works. I'll clean it up in the future
-instlist=$( curl $( cat /tmp/$OS.sucatalog | grep "http://swcdn.apple.com/content/downloads/.*/InstallESDDmg.pkg<" | sed 's/InstallESDDmg\.pkg/InstallInfo\.plist/g;s/<string>//g;s/<\/string>//g;s/.*http/http/g') 2>/dev/null | grep -B2 "System Image Info" |  sed 's/--//g;s/<string>//g;s/<\/string>//g;s/.*vers.*//g' | grep . | cut -f-3 -d "." | cut -c 3- | grep -v "System Image\|dict" |  grep -n "")
-installer=$(cat /tmp/$OS.sucatalog | grep "http://swcdn.apple.com/content/downloads/.*/InstallESDDmg.pkg<" | sed "s/<string>//g;s/<\/string>//g$blacklist" | tr ' ' '\n' | grep . | grep -n "")
+instlist=$( curl $( cat /tmp/$OS.sucatalog | grep "http.*://swcdn.apple.com/content/downloads/.*/InstallESDDmg.pkg<" | sed 's/InstallESDDmg\.pkg/InstallInfo\.plist/g;s/<string>//g;s/<\/string>//g;s/.*http/http/g') 2>/dev/null | grep -B2 "System Image Info" |  sed 's/--//g;s/<string>//g;s/<\/string>//g;s/.*vers.*//g' | grep . | cut -f-3 -d "." | cut -c 3- | grep -v "System Image\|dict" |  grep -n "")
+installer=$(cat /tmp/$OS.sucatalog | grep "http.*://swcdn.apple.com/content/downloads/.*/InstallESDDmg.pkg<" | sed "s/<string>//g;s/<\/string>//g$blacklist" | tr ' ' '\n' | grep . | grep -n "")
 osdel=$( printf "$instlist" | grep -v -n "$OSVER" | cut -f1 -d ':' | tr '\n' 'd;' | sed 's/.$//g;s/$/d/;s/d/d\;/g')
 instlist=$( printf "$instlist" | grep  ":$OSVER" )
 installer=$( printf "$installer" | tr ' ' '\n' | grep "^$( printf "$instlist" | tr ' ' '\n' | cut -f1 -d ':' | sed 's/$/:/g')" | cut -f3 -d ':' | sed 's/^/http\:/g')
@@ -198,10 +198,10 @@ get_latest () {
 	fi
 	#The next line is hacky garbage, I'm writing some of this at 5am
 	[[ "$@" =~ '-cache' ]] && sucatalog=$( cat "/tmp/cached.sucatalog")
-	instlist=$( echo $(echo "$sucatalog" | grep "http://swcdn.apple.com/content/downloads/.*/InstallAssistant.pkg<" | sed 's/InstallAssistant.pkg/BuildManifest.plist/g;s/<string>//g;s/<\/string>//g') | xargs curl -s | grep -A1 "ProductVersion" | sed 's/--//g;s/<key>ProductVersion<\/key>//g;s/<string>//g;s/<\/string>//g' | grep . | cut -c 2- | grep .)
+	instlist=$( echo $(echo "$sucatalog" | grep "http.*://swcdn.apple.com/content/downloads/.*/InstallAssistant.pkg<" | sed 's/InstallAssistant.pkg/BuildManifest.plist/g;s/<string>//g;s/<\/string>//g') | xargs curl -s | grep -A1 "ProductVersion" | sed 's/--//g;s/<key>ProductVersion<\/key>//g;s/<string>//g;s/<\/string>//g' | grep . | cut -c 2- | grep .)
 	osdel=$( printf "$instlist" | grep -v -n "$OS" | cut -f1 -d ':' | tr '\n' 'd;' | sed 's/.$//g;s/$/d/;s/d/d\;/g')
 	instlist=$( printf "$instlist" | grep  ":$OS" )
-	installer=$(printf "$sucatalog" | grep "http://swcdn.apple.com/content/downloads/.*/InstallAssistant.pkg<" 2>/dev/null | sed "s/<string>//g;s/<\/string>//g;s/.*http/http/g;$osdel" | tail -n 1)
+	installer=$(printf "$sucatalog" | grep "http.*://swcdn.apple.com/content/downloads/.*/InstallAssistant.pkg<" 2>/dev/null | sed "s/<string>//g;s/<\/string>//g;s/.*http/http/g;$osdel" | tail -n 1)
 	version=$(curl $(echo "$installer" | sed 's/InstallAssistant\.pkg/BuildManifest\.plist/') 2>/dev/null | grep -A1 ProductVersion | sed 's/.*P.*//g;s/<string>//g;s/<\/string>//g' | grep . | sed 's/  //g' | cut -c 2-)
 	build=$(curl $(echo "$installer" | sed 's/InstallAssistant\.pkg/BuildManifest\.plist/') 2>/dev/null | grep -A1 BuildNumber | sort | uniq | grep "string" | sed 's/<string>//g;s/<\/string>//g' | cut -c 5-)
 	[[ "$@" =~ '-get-latest' ]] && printf "$installer ($version $build)\n"
