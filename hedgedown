@@ -226,7 +226,7 @@ printf "################################\n#       macOS Downloader       #\n####
 echo "To refresh catalogs, please rerun with '-refreshcatalogs' flag"
 echo "To load beta catalogs, please rerun with '-beta' flag"
 printf "To show Archive.org-exclusive installers, rerun with '-archive' flag. To download Archive installers with aria2c, use '-aria2' flag\n\n"
-printf "CLI examples (Big Sur+): \nGet Latest InstallAssistant Link: macOS Downloader.sh -get-latest -bigsur -beta\nDownload Latest InstallAssistant: macOS Downloader.sh -download-latest -bigsur -beta\n\n"
+printf "CLI examples (Big Sur+): \nGet Latest InstallAssistant Link: hedgedown -get-latest -bigsur -beta\nDownload Latest InstallAssistant: hedgedown -download-latest -bigsur -beta\n\n"
 printf "Please Select an OS Category: \n"
 select opt in "macOS Monterey" "macOS Big Sur" "macOS Catalina" "macOS Mojave" "macOS High Sierra" "macOS Sierra" "OS X El Capitan" "OS X Yosemite" "${mavericks[@]}" "OS X Mountain Lion" "Mac OS X Lion" "${archive[@]}"; do
   case $opt in
