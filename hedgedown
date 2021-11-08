@@ -217,6 +217,14 @@ get_latest () {
 ############################
 # Select OS/CLI
 ############################
+
+if [[ "$@" =~ "-aria2" ]]; then
+	if ! hash aria2c &>/dev/null; then
+    	echo "Need aria2c to use the '-aria2' flag."
+    	exit 1
+	fi;
+fi
+
 [[ "$@" =~ '-get-'* ]] && get_latest "$@"
 [[ "$@" =~ '-download-' ]] && get_latest "$@"
 [[ "$@" =~ '-archive' ]] && { archive=("Mac OS X Snow Leopard" "Mac OS X Leopard (Intel)" "Mac OS X Tiger (Intel)"); mavericks=("OS X Mavericks"); }
