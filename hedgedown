@@ -195,6 +195,8 @@ get_latest () {
 		[[ "$@" =~ '-monterey' ]] && [[ "$@" =~ '-beta' ]] && sucatalog=$( curl https://swscan.apple.com/content/catalogs/others/index-12seed-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog $downloadarg $location 2>/dev/null)
 		[[ "$@" =~ '-ventura' ]] && { sucatalog=$( curl https://swscan.apple.com/content/catalogs/others/index-13-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog $downloadarg $location 2>/dev/null); OS=13; }
 		[[ "$@" =~ '-ventura' ]] && [[ "$@" =~ '-beta' ]] && sucatalog=$( curl https://swscan.apple.com/content/catalogs/others/index-13seed-13-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog $downloadarg $location 2>/dev/null)
+		[[ "$@" =~ '-sonoma' ]] && { sucatalog=$( curl https://swscan.apple.com/content/catalogs/others/index-14-13-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog $downloadarg $location 2>/dev/null); OS=14; }
+		[[ "$@" =~ '-sonoma' ]] && [[ "$@" =~ '-beta' ]] && sucatalog=$( curl https://swscan.apple.com/content/catalogs/others/index-14seed-14-13-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog $downloadarg $location 2>/dev/null)
 		
 	else
 		[[ "$@" =~ '-bigsur' ]] && OS=11
@@ -214,7 +216,7 @@ get_latest () {
 	[[ "$@" =~ '-get-link' ]] && printf "$installer\n"
 	[[ "$@" =~ '-get-vers' ]] && printf "macOS $version ($build)\n"
 	[[ "$@" =~ '-download-latest' ]] && { echo "Downloading macOS $version ($build)..."; curl "$installer" -o ~/Downloads/InstallAssistant\ \($version\ $build\).pkg2>&1 -#  | perl -015 -n -e 'print "$1\n" if (/[#]* ([\d]+)/);'; afplay /System/Library/Sounds/Blow.aiff; }
-	exit 0
+	exit
 }
 
 
@@ -241,8 +243,16 @@ echo "To load beta catalogs, please rerun with '-beta' flag"
 printf "To show Archive.org-exclusive installers, rerun with '-archive' flag. To download Archive installers with aria2c, use '-aria2' flag\n\n"
 printf "CLI examples (Big Sur+): \nGet Latest InstallAssistant Link: hedgedown -get-latest -bigsur -beta\nDownload Latest InstallAssistant: hedgedown -download-latest -bigsur -beta\n\n"
 printf "Please Select an OS Category: \n"
-select opt in "macOS Ventura" "macOS Monterey" "macOS Big Sur" "macOS Catalina" "macOS Mojave" "macOS High Sierra" "macOS Sierra" "OS X El Capitan" "OS X Yosemite" "${mavericks[@]}" "OS X Mountain Lion" "Mac OS X Lion" "${archive[@]}"; do
+select opt in "macOS Sonoma" "macOS Ventura" "macOS Monterey" "macOS Big Sur" "macOS Catalina" "macOS Mojave" "macOS High Sierra" "macOS Sierra" "OS X El Capitan" "OS X Yosemite" "${mavericks[@]}" "OS X Mountain Lion" "Mac OS X Lion" "${archive[@]}"; do
   case $opt in
+  	"macOS Sonoma")
+		sucatalog='https://swscan.apple.com/content/catalogs/others/index-14-13-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'
+		[[ "$@" =~ '-beta' ]] && { sucatalog='https://swscan.apple.com/content/catalogs/others/index-14seed-14-13-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'; beta='beta'; }
+		OS='Sonoma'
+		OSVER='14'
+		download_modern
+		break
+;;
   	"macOS Ventura")
 		sucatalog='https://swscan.apple.com/content/catalogs/others/index-13-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'
 		[[ "$@" =~ '-beta' ]] && { sucatalog='https://swscan.apple.com/content/catalogs/others/index-13seed-13-12-10.16-10.15-10.14-10.13-10.12-10.11-10.10-10.9-mountainlion-lion-snowleopard-leopard.merged-1.sucatalog'; beta='beta'; }
